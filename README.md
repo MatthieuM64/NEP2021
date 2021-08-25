@@ -3,7 +3,7 @@ Codes used in the article "Narrow escape problem in two-shell spherical domains"
 
 Written by M. Mangeat (2021).
 
-FEM/
+<b>FEM/</b>
 
 Contains the FreeFem++ codes (https://freefem.org/). Calculate the numerical solution of the MFPT with the finite element method.
 
