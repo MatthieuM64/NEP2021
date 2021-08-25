@@ -1,5 +1,5 @@
 # NEP2021
-<a href="https://dx.doi.org/10.5281/zenodo.5261176"><img src="https://zenodo.org/badge/399397571.svg" alt="DOI"></a>
+<a href="https://dx.doi.org/10.5281/zenodo.5261175"><img src="https://zenodo.org/badge/399397571.svg" alt="DOI"></a>
 
 Codes used in the article "Narrow escape problem in two-shell spherical domains" by M. Mangeat and H. Rieger.</br>
 Written by M. Mangeat (2021).
