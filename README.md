@@ -7,7 +7,7 @@ Contains the FreeFem++ codes (https://freefem.org/). Calculate the numerical sol
 Run: FreeFem++ -v 0 -nw $name.edp -param $param</br>
 List of parameters: epsilon, Delta, D1, D2, V1, V2, Nvert, err, expT, expNE, expDELTA, expMAX (details as comment in the code).
 
-KMC/</br>
+<b>KMC/</b></br>
 Contains the C++ codes. Calculate the MFPT via the stochastic simulations of Brownian particles.</br>
 Compile: g++ name.cpp -lgsl -lgslcblas -lm -O3 -s -o name.out.</br>
 Run: ./name.out -param $param.</br>
