@@ -1,0 +1,224 @@
+/*CODE IMPLEMENTED WITH FreeFem++ (documentation and free software available on https://freefem.org/)
+  "NARROW ESCAPE PROBLEM IN TWO-SHELL SPHERICAL DOMAINS" by M. MANGEAT AND H. RIEGER
+  3D NUMERICAL SOLUTION WITH FINITE ELEMENT METHOD - WRITTEN BY M. MANGEAT (2021)*/
+
+include "getARGV.idp"  //Include parameters in command line.
+load "MUMPS" //Load a solver with less errors.
+
+//////////////////////////////
+/// PARAMETERS OF THE CODE ///
+//////////////////////////////
+
+//CPU clock time.
+real cpu=clock();
+
+//Physical parameters: epsilon=escape angle, Delta=cortex width, D1=outer diffusion, D2=inner diffusion, V1=outer potential, V2=inner potential.
+real epsilon=getARGV("-epsilon",0.5);
+real Delta=getARGV("-Delta",0.25);
+real D1=getARGV("-D1",5.);
+real D2=getARGV("-D2",1.);
+real V1=getARGV("-V1",0.);
+real V2=getARGV("-V2",2.);
+
+//Numerical parameters: ERR=error for adaptmesh, N=Number of vertices.
+real ERR=getARGV("-err",1e-4);
+int Nvert=getARGV("-Nvert",300);
+
+//Exportation modes: expT=[t(x)], expNE=[T vs epsilon], expDELTA=[T vs Delta], expMAX=[rmax vs Delta and D1/D2].
+bool expT=getARGV("-expT",0);
+bool expNE=getARGV("-expNE",0);
+bool expDELTA=getARGV("-expDELTA",0);
+bool expMAX=getARGV("-expMAX",0);
+
+//Iteration parameters (over the mesh adaptation): error=initial error, testNewDomain=the new domain is valid.
+real testNewDomain=1;
+real error=1e-2;
+
+//////////////////////////////
+/// CREATION OF THE DOMAIN ///
+//////////////////////////////
+
+//Definition of the domain.
+border C11(t=epsilon,pi){x=cos(t); y=sin(t); label=1;}
+border C12(t=-1,-1+Delta){x=t; y=0; label=1;}
+border C13(t=-1+Delta,1-Delta){x=t; y=0; label=1;}
+border C14(t=1-Delta,1){x=t; y=0; label=1;}
+border C2(t=0,epsilon){x=cos(t); y=sin(t); label=2;}
+border C3(t=0,pi){x=(1-Delta)*cos(t); y=(1-Delta)*sin(t); label=3;}
+
+//Definition of the mesh-grid.
+int Nesc=min(Nvert-10,max(10,int(Nvert*epsilon/pi))); //Number of vertices of the escape region.
+int Next=Nvert-Nesc; //Number of vertices of the reflecting boundary.
+int Naxis1=min(Nvert/2-10,max(10,int(0.5*Nvert*Delta))); //Number of vertices on the rotation axis (cortex).
+int Naxis2=Nvert-2*Naxis1; //Number of vertices on the rotation axis (inner shell).
+int Nint=max(10,int(Nvert*(1-Delta)));  //Number of vertices at the interface of the two shells.
+
+mesh Th=buildmesh(C11(Next)+C12(Naxis1)+C13(Naxis2)+C14(Naxis1)+C2(Nesc)+C3(Nint),fixedborder=0);
+cout << "=== MESH-GRID CREATED ===" << " -ctime=" << int(100*(clock()-cpu))/100. << "s" << endl;
+
+//Definition of the vectorial spaces.
+fespace Vh(Th,P2);
+fespace Ph(Th,P0);
+
+//Functions defined on the mesh.
+Vh t,v; //MFPT and test-function.
+
+Ph reg=region;
+int nint=reg(0,(1-Delta)*0.5);
+int next=reg(0,1-Delta*0.5);
+Ph D= D2*(region==nint) + D1*(region==next); //Piecewise diffusion.
+Ph Ps= exp(-V2)*(region==nint) + exp(-V1)*(region==next); //Piecewise stationary pdf.
+
+///////////////////////////////
+/// EQUATION OF THE PROBLEM ///
+///////////////////////////////
+
+//PDE = BILINEAR TERM (bulk term + surface term) + LINEAR TERM + Dirichlet condition.
+solve NEP3d(t,v) = -int2d(Th)(y*D*Ps*(dx(t)*dx(v) + dy(t)*dy(v))) + int1d(Th,2)(y*D*Ps*v*(N.x*dx(t)+N.y*dy(t))) + int2d(Th)(y*Ps*v) + on(2,t=0);
+
+//Dimensionless GMFPT/CMFPT/MMFPT.
+real GMFPT=D1*int2d(Th)(y*Ps*t)/int2d(Th)(y*Ps);
+real CMFPT=D1*t(0.,0.);
+real MMFPT=D1*t[].max;
+
+//Print these values.
+cout.precision(6);
+cout << "0th iteration : -GMFPT=" << GMFPT << " -CMFPT=" << CMFPT << " -MMFPT=" << MMFPT << " -ctime=" << int(100*(clock()-cpu))/100. << "s" << endl;
+
+//Iteration over the mesh adaptation.
+int iter=1;
+while (error>ERR && testNewDomain==1)
+{
+	try
+	{
+		//Creation of the new mesh.
+		Th=adaptmesh(Th,t,err=error,nbvx=1000000,hmax=0.05,hmin=1e-10);
+		
+		//Solve equation for the new mesh.
+		NEP3d;
+		
+		//Dimensionless GMFPT/CMFPT/MMFPT.
+		GMFPT=D1*int2d(Th)(y*Ps*t)/int2d(Th)(y*Ps);
+		CMFPT=D1*t(0.,0.);
+		MMFPT=D1*t[].max;
+		
+		//Print these values.
+		cout << iter << "th iteration : -GMFPT=" << GMFPT << " -CMFPT=" << CMFPT << " -MMFPT=" << MMFPT << " -ctime=" << int(100*(clock()-cpu))/100. << "s" << endl;
+		
+		//Incrementation.
+		error/=2;
+		iter+=1;
+	}
+	catch (...) //If there is an error with the new mesh.
+	{
+		testNewDomain=0;
+	}
+}
+
+cout << "=== EQUATION SOLVED ===" << " -ctime=" << int(100*(clock()-cpu))/100. << "s" << endl;
+
+//////////////////
+/// DATA FILES ///
+//////////////////
+
+//MFPT t(x).
+if (expT)
+{
+	int Nexp=2000;
+	system("mkdir -p data_NEP3d_MFPT/");
+	ofstream file("data_NEP3d_MFPT/NEP3d_MFPT_Delta="+Delta+"_D="+D1/D2+"_V="+(V2-V1)+"_epsilon="+epsilon+".txt");
+	file.precision(4);
+	for (real Y=0;Y<=1;Y+=1./Nexp)
+	{
+		for (real X=-1;X<=1;X+=2./Nexp)
+		{
+			if (X*X+Y*Y<1)
+			{
+				file << t(X,Y) << " ";
+			}
+			else
+			{
+				file << 0 << " ";
+			}
+		}
+		file << endl;
+	}
+}
+
+//Narrow-escape figure (GMFPT/CMFPT/MMFPT vs epsilon).
+if (expNE)
+{
+	system("mkdir -p data_NEP3d_MFPT/");
+	ofstream fileFPT("data_NEP3d_MFPT/NEP3d_NE_Delta="+Delta+"_D="+D1/D2+"_V="+(V2-V1)+".txt",append);
+	fileFPT.precision(8);
+	fileFPT << epsilon << "\t" << GMFPT << "\t" << CMFPT << "\t" << MMFPT << endl;
+}
+
+//Optimization figure (GMFPT/CMFPT/MMFPT vs Delta).
+if (expDELTA)
+{
+	system("mkdir -p data_NEP3d_MFPT/");
+	ofstream fileFPT("data_NEP3d_MFPT/NEP3d_DELTA_epsilon="+epsilon+"_D="+D1/D2+"_V="+(V2-V1)+".txt",append);
+	fileFPT.precision(8);
+	fileFPT << Delta << "\t" << GMFPT << "\t" << CMFPT << "\t" << MMFPT << endl;
+}
+
+//MMPFT figure (rmax vs Delta and D1/D2).
+if (expMAX)
+{
+	//Maximum in the cortex.
+	real a=-1;
+	real b=-1+Delta;
+	while (abs(b-a)>1e-5)
+	{
+		real c=(2*a+b)/3, d=(2*b+a)/3;
+		real fc=t(c,0), fd=t(d,0);
+		if (fc<fd)
+		{
+			a=c;
+		}
+		else
+		{
+			b=d;
+		} 
+	}
+	real rmax1=abs(a+b)/2;
+	
+	//Maximum in the inner shell.
+	a=-1+Delta;
+	b=0;
+	while (abs(b-a)>1e-5)
+	{
+		real c=(2*a+b)/3, d=(2*b+a)/3;
+		real fc=t(c,0), fd=t(d,0);
+		if (fc<fd)
+		{
+			a=c;
+		}
+		else
+		{
+			b=d;
+		} 
+	}
+	real rmax2=abs(a+b)/2;
+	
+	//Select the higher value.
+	real rmax=-1;
+	if (t(-rmax1,0)>t(-rmax2,0))
+	{
+		rmax=rmax1;
+	}
+	else
+	{
+		rmax=rmax2;
+	}
+	
+	//Print the value of rmax.
+	cout << "-rmax=" << rmax << " -t(rmax)=" << D1*t(-rmax,0) << " -MMFPT=" << D1*t[].max << endl;
+	system("mkdir -p data_NEP3d_RMAX/");
+	ofstream fileFPT("data_NEP3d_RMAX/NEP3d_RMAX_epsilon="+epsilon+"_V="+(V2-V1)+".txt",append);
+	fileFPT.precision(8);
+	fileFPT << Delta << "\t" << D1/D2 << "\t" << rmax << endl;
+}
+
+cout << "=== END ===" << " -ctime=" << int(100*(clock()-cpu))/100. << "s" << endl;
