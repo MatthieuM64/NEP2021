@@ -14,5 +14,5 @@ List of parameters: epsilon, Delta, D1, D2, V1, V2, Nvert, err, expT, expNE, exp
 <b>KMC/</b></br>
 Contains the C++ codes. Calculate the MFPT via the stochastic simulations of Brownian particles.</br>
 Compile: g++ name.cpp -lgsl -lgslcblas -lm -O3 -s -o name.out.</br>
-Run: ./name.out -param $param.</br>
+Run: ./name.out -param=$param.</br>
 List of parameters: epsilon, Delta, D1, D2, V1, V2, Npart, ran (details as comments in the code).
