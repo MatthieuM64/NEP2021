@@ -1,7 +1,9 @@
 # Narrow escape problem in two-shell spherical domains
 <a href="https://dx.doi.org/10.5281/zenodo.5261175"><img src="https://zenodo.org/badge/399397571.svg" alt="DOI"></a>
 
-Codes used in the article "Narrow escape problem in two-shell spherical domains" by M. Mangeat and H. Rieger.</br>
+Codes used in the scientific publications:</br>
+[1] M. Mangeat and H. Rieger, <a href="https://doi.org/10.1088/1751-8121/ab4348"><i>The narrow escape problem in a circular domain with radial piecewise constant diffusivity</i></a>, J. Phys. A: Math. Theor. <b>52</b>, 424002 (2019).</br>
+[2] M. Mangeat and H. Rieger, <a href='https://arxiv.org/abs/2104.13125'><i>Narrow escape problem in two-shell spherical domains</i></a>, submitted (2021).</br>
 Written by M. Mangeat (2021).
 
 <b>FEM/</b></br>
